@@ -48,7 +48,7 @@ async function run() {
                 next()
             }
             else {
-                res.status(403).send({ message: 'Forbidden ' })
+                res.status(403).send({ message: 'Forbiden ' })
             }
         }
 
@@ -61,7 +61,7 @@ async function run() {
         app.get('/part/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
-            const cursor = partsCollection.find(query);
+            const cursor = partsCollection.findOne(query);
             const result = await cursor.toArray();
             res.send(result)
         })
@@ -74,9 +74,14 @@ async function run() {
             const result = await orderCollection.find().toArray();
             res.send(result)
         })
-        app.get('/parts/:email', verifyJWT, async (req, res) => {
-            const decodedEmail = req.decoded.email;
-            console.log(decodedEmail);
+        app.get('/order/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const cursor = orderCollection.findOne(query);
+            const result = await cursor.toArray();
+            res.send(result)
+        })
+        app.get('/parts/:email', async (req, res) => {
             const result = await orderCollection.find({ email: req.params.email }).toArray();
             res.send(result)
         });
@@ -93,7 +98,7 @@ async function run() {
             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
             res.send({ result, token })
         })
-        app.put('/user/admin/:email', verifyJWT, async (req, res) => {
+        app.put('/user/admin/:email', async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
             const options = { upsert: true };
@@ -103,14 +108,14 @@ async function run() {
             const result = await userCollection.updateOne(filter, updateDoc, options);
             res.send(result)
         })
-        app.get('/user/admin/:email', verifyJWT, async (req, res) => {
+        app.get('/user/admin/:email', async (req, res) => {
 
             const email = req.params.email;
 
             const result = await userCollection.find({ email: email }).toArray();
             res.send(result)
         })
-        app.get('/user', verifyJWT, verifyAdmin, async (req, res) => {
+        app.get('/user', async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result)
         })
@@ -137,7 +142,7 @@ async function run() {
             res.send(result)
         })
         app.get('/userInfo/:email', async (req, res) => {
-            const result = await userInfoCollection.findOne({ email: req.params.email });
+            const result = await userInfoCollection.find({ email: req.params.email }).toArray();
             res.send(result)
         })
     }
