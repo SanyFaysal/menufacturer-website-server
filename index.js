@@ -14,6 +14,22 @@ app.use(cors())
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.vue0r.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+
+function verifyJWT(req, res, next) {
+    const authHeaders = req.headers.authorization;
+    if (!authHeaders) {
+        return res.status(401).send({ message: 'Unauthorized access' })
+    };
+    const token = authorization.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+        if (err) {
+            return res.status(403).send({ message: 'Forbidden access' })
+        }
+        req.decoded = decoded;
+        next()
+    })
+
+}
 async function run() {
     try {
         await client.connect();
@@ -23,6 +39,19 @@ async function run() {
         const reviewCollection = client.db('manufacturer-website').collection('reviews');
         const userInfoCollection = client.db('manufacturer-website').collection('userInfo');
         const userCollection = client.db('manufacturer-website').collection('users');
+
+
+        const verifyAdmin = async (req, res, next) => {
+            const requester = req.decoded.email;
+            const requesterAccount = await userCollection.findOne({ email: requester });
+            if (requesterAccount.role === 'admin') {
+                next()
+            }
+            else {
+                res.status(403).send({ message: 'Forbidden ' })
+            }
+        }
+
         //    get all parts 
         app.get('/part', async (req, res) => {
             const result = await partsCollection.find().toArray()
@@ -45,12 +74,14 @@ async function run() {
             const result = await orderCollection.find().toArray();
             res.send(result)
         })
-        app.get('/parts/:email', async (req, res) => {
+        app.get('/parts/:email', verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.email;
+            console.log(decodedEmail);
             const result = await orderCollection.find({ email: req.params.email }).toArray();
             res.send(result)
         });
 
-        app.put('/user/:email', async (req, res) => {
+        app.post('/user/:email', async (req, res) => {
             const email = req.params.email;
             const user = req.body;
             const filter = { email: email };
@@ -62,7 +93,24 @@ async function run() {
             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
             res.send({ result, token })
         })
-        app.get('/user', async (req, res) => {
+        app.put('/user/admin/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: { role: 'admin' }
+            }
+            const result = await userCollection.updateOne(filter, updateDoc, options);
+            res.send(result)
+        })
+        app.get('/user/admin/:email', verifyJWT, async (req, res) => {
+
+            const email = req.params.email;
+
+            const result = await userCollection.find({ email: email }).toArray();
+            res.send(result)
+        })
+        app.get('/user', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result)
         })
@@ -89,7 +137,7 @@ async function run() {
             res.send(result)
         })
         app.get('/userInfo/:email', async (req, res) => {
-            const result = await userInfoCollection.find({ email: req.params.email }).toArray();
+            const result = await userInfoCollection.findOne({ email: req.params.email });
             res.send(result)
         })
     }
