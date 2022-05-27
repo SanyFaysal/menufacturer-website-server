@@ -71,8 +71,7 @@ async function run() {
         app.get('/part/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
-            const cursor = partsCollection.findOne(query);
-            const result = await cursor.toArray();
+            const result = await partsCollection.findOne(query)
             res.send(result)
         })
         app.post('/part', async (req, res) => {
