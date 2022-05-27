@@ -3,13 +3,13 @@ const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const app = express()
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
 
 app.use(express.json())
 app.use(cors())
-
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.vue0r.mongodb.net/?retryWrites=true&w=majority`;
@@ -51,7 +51,17 @@ async function run() {
                 res.status(403).send({ message: 'Forbiden ' })
             }
         }
-
+        app.post('/create-payment-intent', async (req, res) => {
+            const service = req.body;
+            const price = service.price;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            })
+            res.send({ clientSecret: paymentIntent.client_secret })
+        })
         //    get all parts 
         app.get('/part', async (req, res) => {
             const result = await partsCollection.find().toArray()
@@ -77,8 +87,7 @@ async function run() {
         app.get('/order/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
-            const cursor = orderCollection.findOne(query);
-            const result = await cursor.toArray();
+            const result = await orderCollection.findOne(query);
             res.send(result)
         })
         app.get('/parts/:email', async (req, res) => {
