@@ -79,6 +79,25 @@ async function run() {
             const result = await orderCollection.insertOne(part);
             res.send(result)
         })
+
+        app.put('/product/:id', async (req, res) => {
+            const id = req.params.id;
+            const product = req.body;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    name: product.name,
+                    price: product.price,
+                    available: product.available,
+                    minimum: product.minimum,
+                    desc: product.desc,
+                }
+            }
+            const result = await partsCollection.updateOne(filter, updateDoc, options);
+            res.send(result)
+        })
+
         app.get('/orders', async (req, res) => {
             const result = await orderCollection.find().toArray();
             res.send(result)
