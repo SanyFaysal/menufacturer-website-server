@@ -93,6 +93,11 @@ async function run() {
             const result = await orderCollection.find({ email: req.params.email }).toArray();
             res.send(result)
         });
+        app.post('/addProduct', async (req, res) => {
+            const product = req.body;
+            const result = await partsCollection.insertOne(product);
+            res.send(result)
+        })
 
         app.post('/user/:email', async (req, res) => {
             const email = req.params.email;
